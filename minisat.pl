@@ -1,9 +1,9 @@
-%%============================================================================ 
+%%============================================================================
 %% The SWI-Prolog interface to MiniSat SAT solver
 %% http://www.cs.chalmers.se/Cs/Research/FormalMethods/MiniSat/MiniSat.html
 %%
 %% Copyright (c) 2006, Michael Codish, Vitaly Lagoon, and Peter J. Stuckey
-%% 
+%%
 %% Permission is hereby granted, free of charge, to any person obtaining a
 %% copy of this software and associated documentation files (the
 %% "Software"), to deal in the Software without restriction, including
@@ -11,10 +11,10 @@
 %% distribute, sublicense, and/or sell copies of the Software, and to
 %% permit persons to whom the Software is furnished to do so, subject to
 %% the following conditions:
-%% 
+%%
 %% The above copyright notice and this permission notice shall be included
 %% in all copies or substantial portions of the Software.
-%% 
+%%
 %% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
 %% OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 %% MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -42,12 +42,8 @@
 ]).
 
 
-:- if(current_prolog_flag(dialect, yap)).
-:- load_foreign_files(['pl-minisat'],[],install).
-:- else.
 :- use_module(library(shlib)).
-:- load_foreign_library('pl-minisat.so',install).
-:- endif.
+:- load_foreign_library(foreign(minisat)).
 
 :- dynamic tmp/1.
 
@@ -70,10 +66,10 @@ sat_deinit :-
 %%
 %%
 sat_add_clauses(Cs, Vs, MiniSat_Vs) :-
-	term_variables(Cs,CsVars),        
-	\+ \+ ( 
-		  bind2index(CsVars),    
-		  add_cnf_clauses(Cs), 
+	term_variables(Cs,CsVars),
+	\+ \+ (
+		  bind2index(CsVars),
+		  add_cnf_clauses(Cs),
 		  asserta(tmp(Vs))
 	      ),
 	      retract(tmp(MiniSat_Vs)).
@@ -85,8 +81,8 @@ add_cnf_clauses([Cl|Cls]) :-
 	add_cnf_clauses(Cls).
 
 to_minisat([],[]).
-to_minisat([L|Ls],[N|Ns])  :- 
-	minisat_aux(L,N), 
+to_minisat([L|Ls],[N|Ns])  :-
+	minisat_aux(L,N),
 	to_minisat(Ls,Ns).
 
 minisat_aux(0,1)    :- !.
@@ -102,12 +98,12 @@ bind2index(Vs) :-
 	bind2index_aux(Vs,N1).
 
 bind2index_aux([],_N).
-bind2index_aux([V|Ns],N) :- 
+bind2index_aux([V|Ns],N) :-
 	var(V),
 	!,
 	V=N,
 	N1 is N+1, bind2index_aux(Ns,N1).
-bind2index_aux([V|Ns],N) :- 
+bind2index_aux([V|Ns],N) :-
 	integer(V),
 	bind2index_aux(Ns,N).
 
@@ -130,16 +126,16 @@ sat_get_values([SAT_V|SVs],[PL_V|PL_Vs]) :-
 
 
 %%
-%% sat(+CNF): succeds if CNF is satisfaiable, it does not bind the variables in CNF 
+%% sat(+CNF): succeds if CNF is satisfaiable, it does not bind the variables in CNF
 %%
 
 sat(CNF) :-
 	sat_init,
 	sat_add_clauses(CNF,_,_),
 	sat_solve([]),
-	sat_deinit, 
+	sat_deinit,
 	!.
-sat(_CNF) :- 
+sat(_CNF) :-
 	sat_deinit,
 	!,
 	fail.
@@ -154,9 +150,9 @@ solve(CNF) :-
 	sat_add_clauses(CNF,CNF_Vs,SAT_Vs),
 	sat_solve([]),
 	sat_get_values(SAT_Vs,CNF_Vs),
-	sat_deinit, 
+	sat_deinit,
 	!.
-solve(_) :- 
+solve(_) :-
 	sat_deinit,
 	!,
 	fail.
@@ -171,8 +167,8 @@ maximize(Vec,CNF) :- maximize_v1(Vec,CNF).
 
 %%
 %%
-minimize_v1(Vec,CNF) :- 
-	minimize_v1_aux(Vec,CNF), 
+minimize_v1(Vec,CNF) :-
+	minimize_v1_aux(Vec,CNF),
 	sat(CNF).
 
 minimize_v1_aux([],_CNF).
@@ -183,8 +179,8 @@ minimize_v1_aux([B|Bs],CNF) :-
 
 %%
 %%
-maximize_v1(Vec,CNF) :- 
-	maximize_v1_aux(Vec,CNF), 
+maximize_v1(Vec,CNF) :-
+	maximize_v1_aux(Vec,CNF),
 	sat(CNF).
 
 maximize_v1_aux([],_CNF).
@@ -207,8 +203,8 @@ minimize_v2(Vec,CNF) :-
 	sat_get_values(CNF_SVars,CNF_Vars),
 	sat_deinit,
 	!.
-	
-minimize_v2_loop([]) :- 
+
+minimize_v2_loop([]) :-
 	sat_solve([]).
 minimize_v2_loop([V|Vs]) :-
 	( sat_solve([-V]) ->
@@ -232,8 +228,8 @@ maximize_v2(Vec,CNF) :-
 	sat_get_values(CNF_SVars,CNF_Vars),
 	sat_deinit,
 	!.
-	
-maximize_v2_loop([]) :- 
+
+maximize_v2_loop([]) :-
 	sat_solve([]).
 maximize_v2_loop([V|Vs]) :-
 	( sat_solve([V]) ->
@@ -259,7 +255,7 @@ minimize_v3(Vec,CNF) :-
 	sat_get_values(Vec_SVars,Curr_Min),
 	sat_get_values(CNF_SVars,Curr_Sol),
 	minimize_v3_loop(Vec_SVars,CNF_SVars,Curr_Min,Curr_Sol,Vec,CNF_Vars),
-	minisat_delete_solver, 
+	minisat_delete_solver,
 	!.
 
 minimize_v3_loop(Vec,CNF_SVars,Last_Min,_Last_Sol,Final_Min,Final_Sol) :-
@@ -286,7 +282,7 @@ maximize_v3(Vec,CNF) :-
 	sat_get_values(Vec_SVars,Curr_Max),
 	sat_get_values(CNF_SVars,Curr_Sol),
 	maximize_v3_loop(Vec_SVars,CNF_SVars,Curr_Max,Curr_Sol,Vec,CNF_Vars),
-	minisat_delete_solver, 
+	minisat_delete_solver,
 	!.
 
 maximize_v3_loop(Vec,CNF_SVars,Last_Max,_Last_Sol,Final_Max,Final_Sol) :-
@@ -306,7 +302,7 @@ maximize_v3_loop(_Vec,_CNF_SVars,Final_Max,Final_Sol,Final_Max,Final_Sol) :-
 %%
 %%
 eliminate_prefix([],_Bit,[]) :- !.
-eliminate_prefix([V|Vs],Bit,New_Vs) :- 
+eliminate_prefix([V|Vs],Bit,New_Vs) :-
 	sat_get_values([V],[VVal]),
 	VVal = Bit,
 	( Bit = 0 -> sat_add_clauses([[-V]],_,_) ; sat_add_clauses([[V]],_,_) ),
@@ -319,7 +315,7 @@ eliminate_prefix(Vs,Vs).
 %%
 %%
 % B == (Xs = Ys)
-xs_eq_ys([X],[Y],B,Cnf1-Cnf2) :- 
+xs_eq_ys([X],[Y],B,Cnf1-Cnf2) :-
 	!,
    eq(X,Y,B,Cnf1-Cnf2).
 xs_eq_ys([X|Xs],[Y|Ys],B,Cnf1-Cnf4) :-

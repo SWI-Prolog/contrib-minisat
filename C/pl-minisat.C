@@ -40,7 +40,7 @@ extern "C" foreign_t minisat_set_minvars(term_t l)
 {
     term_t head = PL_new_term_ref();      /* variable for the elements */
     term_t list = PL_copy_term_ref(l);    /* copy as we need to write */
-    
+
     vec<Lit> lits;
 
     while( PL_get_list(list, head, list) ) {
@@ -56,7 +56,7 @@ extern "C" foreign_t minisat_add_clause(term_t l)
 {
     term_t head = PL_new_term_ref();      /* variable for the elements */
     term_t list = PL_copy_term_ref(l);    /* copy as we need to write */
-    
+
     vec<Lit> lits;
 
     while( PL_get_list(list, head, list) ) {
@@ -64,7 +64,7 @@ extern "C" foreign_t minisat_add_clause(term_t l)
     }
 
     assert(PL_get_nil(list));
-    
+
     if (s->addClause(lits)) PL_succeed; else PL_fail;
 }
 
@@ -73,7 +73,7 @@ extern "C" foreign_t minisat_solve(term_t assum) {
 
     term_t head = PL_new_term_ref();      /* variable for the elements */
     term_t list = PL_copy_term_ref(assum);    /* copy as we need to write */
-  
+
     vec<Lit> assumptions;
 
     while( PL_get_list(list, head, list) ) {
@@ -92,7 +92,7 @@ extern "C" foreign_t minisat_get_var_assignment(term_t var, term_t res)
   i--;
 
   if (i < s->nVars()) {
-    term_t a = PL_new_term_ref();      /* variable for the elements */  
+    term_t a = PL_new_term_ref();      /* variable for the elements */
     PL_put_integer(a, val(i));
     return PL_unify(a,res);
   } else {
@@ -102,7 +102,7 @@ extern "C" foreign_t minisat_get_var_assignment(term_t var, term_t res)
 
 extern "C" foreign_t minisat_nvars(term_t res)
 {
-  term_t a = PL_new_term_ref();      /* variable for the elements */  
+  term_t a = PL_new_term_ref();      /* variable for the elements */
   PL_put_integer(a, s->nVars());
   return PL_unify(a,res);
 }
@@ -131,7 +131,7 @@ static const PL_extension predicates[] =
     };
 
 //-----------------------------------------------------------------------------
-extern "C" install_t install()
+extern "C" install_t install_minisat()
 {
     //Sdprintf("%% SWI-Prolog interface to MiniSat");
     //Sdprintf(" - built on ");
@@ -147,6 +147,8 @@ extern "C" install_t install()
 
     //Sdprintf("OK\n");
 }
+
+#if STAND_ALONE
 
 //-----------------------------------------------------------------------------
 // This part is for compiling into a standalone executable
@@ -168,8 +170,10 @@ int main(int argc, char **argv)
     install();
     if ( !PL_initialise(argc, argv) )
 	PL_halt(1);
-    
+
     PL_halt(PL_toplevel() ? 0 : 1);
-    
+
     return 0;
 }
+
+#endif STAND_ALONE
