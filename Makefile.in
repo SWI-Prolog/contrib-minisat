@@ -1,43 +1,61 @@
+################################################################
+# Makefile template for SWI-Prolog CLIB package
 #
-# default base directory for YAP installation
+# This template is used by configure to create Makefile.  See
+# the file INSTALL for further installation instructions.
 #
+# License: LGPL
 #
-ROOTDIR = @prefix@
-#
-# where the binary should be
-#
-BINDIR = $(ROOTDIR)/bin
-#
-# where YAP should look for binary libraries
-#
-LIBDIR=@libdir@
-YAPLIBDIR=@libdir@/Yap
-#
-# where YAP should look for architecture-independent Prolog libraries
-#
-SHAREDIR=$(ROOTDIR)/share
-#
-#
-# You shouldn't need to change what follows.
-#
-INSTALL=@INSTALL@
-INSTALL_DATA=@INSTALL_DATA@
-INSTALL_PROGRAM=@INSTALL_PROGRAM@
-srcdir=@srcdir@
-YAP_EXTRAS=@YAP_EXTRAS@ 
+# Author: Jan Wielemaker (wielemak@science.uva.nl)
+################################################################
 
-PROGRAMS= \
-	$(srcdir)/cnf.pl \
-	$(srcdir)/minisat.pl
+PACKAGE=minisat2
+include ../Makefile.defs
 
-EXAMPLE_PROGRAMS= \
-	$(srcdir)/examples/adder.pl \
-	$(srcdir)/examples/pearl_examples.pl
+LIBPL=		cnf.pl minisat.pl
+TARGETS=	minisat.@SO@
 
-install: $(PROGRAMS) 
-	mkdir -p $(DESTDIR)$(SHAREDIR)/Yap
-	mkdir -p $(DESTDIR)$(SHAREDIR)/Yap/minisat_examples
-	for p in $(PROGRAMS); do $(INSTALL_DATA) $$p $(DESTDIR)$(SHAREDIR)/Yap; done
-	for p in $(EXAMPLE_PROGRAMS); do $(INSTALL_DATA) $$p $(DESTDIR)$(SHAREDIR)/Yap/minisat_examples; done
+all:		$(TARGETS)
+
+OBJ=		C/Solver.o C/pl-minisat.o
+
+minisat.@SO@:	$(OBJ)
+		$(LD) $(LDSOFLAGS) -o $@ $(OBJ) @LIBS@
+
+install:	$(TARGETS)
+		mkdir -p $(DESTDIR)$(SOLIBDIR)
+		for f in $(TARGETS); do \
+		  $(INSTALL_PROGRAM) $$f $(DESTDIR)$(SOLIBDIR); \
+		done
+		mkdir -p $(DESTDIR)$(PLLIBDIR)
+		for f in $(LIBPL); do \
+		  $(INSTALL_DATA) $$f $(DESTDIR)$(PLLIBDIR); \
+		done
+		MKINDEX
+
+ln-install::
+		$(MAKE) INSTALL_DATA="../ln-install" INSTALL_PROGRAM="../ln-install" install
+
+rpm-install:	install
+
+uninstall::
+		(cd $(SOLIBDIR) && rm -f $(TARGETS))
+		(cd $(PLLIBDIR) && rm -f $(LIBPL))
+		MKINDEX
+
+################################################################
+# Testing
+################################################################
+
+check::
+
+################################################################
+# Clean
+################################################################
 
 clean:
+		rm -f $(OBJ) *~ *.o *% a.out core config.log
+
+distclean:	clean
+		rm -f $(TARGETS) config.cache config.h config.status Makefile
+		rm -rf autom4te.cache
