@@ -176,4 +176,4 @@ int main(int argc, char **argv)
     return 0;
 }
 
-#endif STAND_ALONE
+#endif /*STAND_ALONE*/
