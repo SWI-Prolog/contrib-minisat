@@ -12,8 +12,9 @@
 PACKAGE=minisat2
 include ../Makefile.defs
 
-LIBPL=		cnf.pl minisat.pl
 TARGETS=	minisat.@SO@
+LIBPL=		cnf.pl minisat.pl
+EXAMPLES=	adder.pl pearl_examples.pl
 
 all:		$(TARGETS)
 
@@ -31,17 +32,25 @@ install:	$(TARGETS)
 		for f in $(LIBPL); do \
 		  $(INSTALL_DATA) $$f $(DESTDIR)$(PLLIBDIR); \
 		done
-		MKINDEX
+		$(MKINDEX)
+
+install-examples::
+		mkdir -p $(DESTDIR)$(PKGEXDIR)/minisat
+		for f in $(EXAMPLES); do
+		  $(INSTALL_DATA) $(srcdir)/$$f $(DESTDIR)$(PKGEXDIR)/minisat; \
+		done
+		$(INSTALL_DATA) $(srcdir)/README $(DESTDIR)$(PKGEXDIR)/minisat;
 
 ln-install::
 		$(MAKE) INSTALL_DATA="../ln-install" INSTALL_PROGRAM="../ln-install" install
 
 rpm-install:	install
+html-install:	install-examples
 
 uninstall::
 		(cd $(SOLIBDIR) && rm -f $(TARGETS))
 		(cd $(PLLIBDIR) && rm -f $(LIBPL))
-		MKINDEX
+		$(MKINDEX)
 
 ################################################################
 # Testing
