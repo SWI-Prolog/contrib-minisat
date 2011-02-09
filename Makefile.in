@@ -21,7 +21,7 @@ all:		$(TARGETS)
 OBJ=		C/Solver.o C/pl-minisat.o
 
 minisat.@SO@:	$(OBJ)
-		$(LD) $(LDSOFLAGS) -o $@ $(OBJ) @LIBS@
+		$(LD) -ld g++ $(LDSOFLAGS) -o $@ $(OBJ) @LIBS@
 
 install:	$(TARGETS)
 		mkdir -p $(DESTDIR)$(SOLIBDIR)
