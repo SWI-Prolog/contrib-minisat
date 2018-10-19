@@ -1,179 +1,107 @@
 #include <SWI-Stream.h>
-#include <SWI-Prolog.h>
+#include <SWI-cpp.h>
 #include <stdio.h>
 #include <assert.h>
 
-#include "Solver.h"
+#if 0
+#include <minisat/core/Solver.h>
+using namespace Minisat;
+#else
+#include <Solver.h>
+#endif
 
 #define val(i) ((s->model[i] != l_Undef) ? ((s->model[i]==l_True)? i+1:-1*(i+1)):0)
 
-Solver      *s = NULL;
+/* FIXME: Allow a solver per thread
+*/
 
+static Solver *s = NULL;
 
-extern "C" foreign_t minisat_new_solver()
-{
-  s = new Solver;
-  PL_succeed;
+PREDICATE0(minisat_new_solver)
+{ s = new Solver;
+
+  return TRUE;
 }
 
 
-extern "C"  foreign_t minisat_delete_solver()
-{
-    if (s) {
-      delete s;
-      s = NULL;
-    }
-    PL_succeed;
+PREDICATE0(minisat_delete_solver)
+{ if (s)
+  { delete s;
+    s = NULL;
+  }
+
+  return TRUE;
 }
 
-static inline Lit pl2lit(term_t pl_literal)
-{
-  int pl_lit_int, var;
-  PL_get_integer(pl_literal,&pl_lit_int);
+
+static inline Lit
+pl2lit(PlTerm pl_literal)
+{ int pl_lit_int = pl_literal;
+  int var;
+
   var = abs(pl_lit_int)-1;
-  while (var >= s->nVars()) s->newVar();
-  return (pl_lit_int > 0) ? Lit(var) : ~Lit(var);
+
+  while( var >= s->nVars() )
+    s->newVar();
+
+#if 0
+  mkLit(var, pl_lit_int > 0);
+#else
+  return pl_lit_int > 0 ? Lit(var) : ~Lit(var);
+#endif
 }
 
 
-extern "C" foreign_t minisat_set_minvars(term_t l)
-{
-    term_t head = PL_new_term_ref();      /* variable for the elements */
-    term_t list = PL_copy_term_ref(l);    /* copy as we need to write */
+PREDICATE(minisat_set_minvars, 1)
+{ PlTail tail(A1);
+  PlTerm head;
 
-    vec<Lit> lits;
+  vec<Lit> lits;
 
-    while( PL_get_list(list, head, list) ) {
-      lits.push( pl2lit(head) );
-    }
+  while( tail.next(head) )
+    lits.push(pl2lit(head));
 
-    assert(PL_get_nil(list));
-
-    if (s->setminVars(lits)) PL_succeed; else PL_fail;
+  return s->setminVars(lits) != 0;
 }
 
-extern "C" foreign_t minisat_add_clause(term_t l)
-{
-    term_t head = PL_new_term_ref();      /* variable for the elements */
-    term_t list = PL_copy_term_ref(l);    /* copy as we need to write */
+PREDICATE(minisat_add_clause, 1)
+{ PlTail tail(A1);
+  PlTerm head;
 
-    vec<Lit> lits;
+  vec<Lit> lits;
 
-    while( PL_get_list(list, head, list) ) {
-      lits.push( pl2lit(head) );
-    }
+  while( tail.next(head) )
+    lits.push( pl2lit(head) );
 
-    assert(PL_get_nil(list));
-
-    if (s->addClause(lits)) PL_succeed; else PL_fail;
+  return s->addClause(lits) != 0;
 }
 
 
-extern "C" foreign_t minisat_solve(term_t assum) {
+PREDICATE(minisat_solve, 1)
+{ PlTail tail(A1);
+  PlTerm head;
 
-    term_t head = PL_new_term_ref();      /* variable for the elements */
-    term_t list = PL_copy_term_ref(assum);    /* copy as we need to write */
+  vec<Lit> assumptions;
 
-    vec<Lit> assumptions;
+  while( tail.next(head) )
+    assumptions.push( pl2lit(head) );
 
-    while( PL_get_list(list, head, list) ) {
-      assumptions.push( pl2lit(head) );
-    }
-
-    if (s->solve(assumptions)) PL_succeed; else PL_fail;
+  return s->solve(assumptions) != 0;
 }
 
 
-extern "C" foreign_t minisat_get_var_assignment(term_t var, term_t res)
-{
-  int i;
+PREDICATE(minisat_get_var_assignment, 2)
+{ int i = A1;
 
-  PL_get_integer(var,&i);
   i--;
 
-  if (i < s->nVars()) {
-    term_t a = PL_new_term_ref();      /* variable for the elements */
-    PL_put_integer(a, val(i));
-    return PL_unify(a,res);
-  } else {
-    PL_fail;
-  }
-}
-
-extern "C" foreign_t minisat_nvars(term_t res)
-{
-  term_t a = PL_new_term_ref();      /* variable for the elements */
-  PL_put_integer(a, s->nVars());
-  return PL_unify(a,res);
+  if ( i < s->nVars() )
+    return (A2 = val(i));
+  else
+    return FALSE;
 }
 
 
-
-
-
-
-
-
-//=============================================================================
-static const PL_extension predicates[] =
-    {
-        //
-        //  { "name", arity, function, PL_FA_<flags> },
-        //
-
-      { "minisat_new_solver",         0, (void*)minisat_new_solver,         0 },
-      { "minisat_delete_solver",      0, (void*)minisat_delete_solver,      0 },
-      { "minisat_add_clause",         1, (void*)minisat_add_clause,         0 },
-      { "minisat_solve",              1, (void*)minisat_solve,              0 },
-      { "minisat_get_var_assignment", 2, (void*)minisat_get_var_assignment, 0 },
-      { "minisat_nvars",              1, (void*)minisat_nvars,              0 },
-      { NULL,                         0, NULL,                              0 }    // terminating line
-    };
-
-//-----------------------------------------------------------------------------
-extern "C" install_t install_minisat()
-{
-    //Sdprintf("%% SWI-Prolog interface to MiniSat");
-    //Sdprintf(" - built on ");
-    //Sdprintf(__DATE__);
-    //Sdprintf(", ");
-    //Sdprintf(__TIME__);
-    //Sdprintf(" ... ");
-    PL_register_extensions(predicates);	/* This is the only PL_ call allowed */
-					/* before PL_initialise().  It */
-					/* ensures the foreign predicates */
-					/* are available before loading */
-					/* Prolog code */
-
-    //Sdprintf("OK\n");
+PREDICATE(minisat_nvars, 1)
+{ return (A1 = s->nVars());
 }
-
-#if STAND_ALONE
-
-//-----------------------------------------------------------------------------
-// This part is for compiling into a standalone executable
-
-#ifdef READLINE
-static void install_readline(int argc, char**argv)
-{
-    PL_install_readline();
-}
-#endif
-
-int main(int argc, char **argv)
-{
-
-#ifdef READLINE
-    PL_initialise_hook(install_readline);
-#endif
-
-    install();
-    if ( !PL_initialise(argc, argv) )
-	PL_halt(1);
-
-    PL_halt(PL_toplevel() ? 0 : 1);
-
-    return 0;
-}
-
-#endif /*STAND_ALONE*/
